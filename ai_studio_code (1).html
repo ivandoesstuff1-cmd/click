@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Idle Clicker</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            color: #fff;
+        }
+
+        #game-container {
+            display: flex;
+            gap: 20px;
+        }
+
+        .column {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            text-align: center;
+        }
+
+        #main-column {
+            width: 300px;
+        }
+
+        #upgrades-column {
+            width: 350px;
+        }
+        
+        #rebirth-column {
+            width: 300px;
+        }
+
+        h1, h2 {
+            margin-top: 0;
+        }
+
+        #score-container {
+            margin-bottom: 20px;
+        }
+
+        #score, #essence {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin: 0;
+        }
+        
+        #score-per-second {
+            font-size: 1em;
+            color: #ddd;
+        }
+
+        #click-area {
+            margin-bottom: 20px;
+        }
+
+        #click-button {
+            width: 150px;
+            height: 150px;
+            font-size: 1.5em;
+            cursor: pointer;
+            border: none;
+            border-radius: 50%;
+            background-color: #ff4757;
+            color: white;
+            transition: transform 0.1s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: auto;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        #click-button:active {
+            transform: scale(0.95);
+        }
+
+        .upgrade-button, #rebirth-button {
+            width: 100%;
+            padding: 15px;
+            font-size: 1em;
+            cursor: pointer;
+            border: none;
+            border-radius: 10px;
+            background-color: #4CAF50;
+            color: white;
+            margin-bottom: 10px;
+            transition: background-color 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .upgrade-button:hover, #rebirth-button:hover {
+            background-color: #45a049;
+        }
+        
+        .upgrade-button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+
+        .upgrade-info {
+            text-align: left;
+        }
+
+        .upgrade-cost {
+            font-weight: 700;
+        }
+        
+        #rebirth-button {
+            background-color: #f44336;
+        }
+        
+        #rebirth-button:hover {
+            background-color: #d32f2f;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="main-column" class="column">
+        <h1>Idle Clicker</h1>
+        <div id="score-container">
+            <p id="score">0</p>
+            <p>Points</p>
+            <p id="score-per-second">0/s</p>
+        </div>
+        <div id="click-area">
+            <button id="click-button">Click Me!</button>
+        </div>
+    </div>
+
+    <div id="upgrades-column" class="column">
+        <h2>Upgrades</h2>
+        <div id="upgrades-container">
+            <!-- Upgrades will be dynamically added here -->
+        </div>
+    </div>
+    
+    <div id="rebirth-column" class="column">
+        <h2>Rebirth</h2>
+        <div id="essence-container">
+            <p id="essence">0</p>
+            <p>Essence</p>
+        </div>
+        <button id="rebirth-button" disabled>Rebirth for 1 Essence (Requires 1,000,000 Points)</button>
+        <div id="rebirth-upgrades-container">
+             <!-- Rebirth upgrades will be dynamically added here -->
+        </div>
+    </div>
+</div>
+
+<script>
+    let score = 0;
+    let scorePerSecond = 0;
+    let essence = 0;
+    let clickPower = 1;
+    
+    const rebirthRequirement = 1000000;
+
+    let upgrades = [
+        { name: 'Click Power', type: 'click', cost: 10, power: 1, level: 1 },
+        { name: 'Grandma', type: 'auto', cost: 50, power: 1, level: 0 },
+        { name: 'Factory', type: 'auto', cost: 500, power: 10, level: 0 },
+        { name: 'Mine', type: 'auto', cost: 5000, power: 80, level: 0 },
+        { name: 'Spaceship', type: 'auto', cost: 50000, power: 500, level: 0 }
+    ];
+
+    let rebirthUpgrades = [
+        { name: 'Essence Boost', description: 'Start with 100x more click power.', cost: 1, purchased: false, apply: () => { clickPower *= 100; } }
+    ];
+
+    const scoreDisplay = document.getElementById('score');
+    const scorePerSecondDisplay = document.getElementById('score-per-second');
+    const clickButton = document.getElementById('click-button');
+    const upgradesContainer = document.getElementById('upgrades-container');
+    const essenceDisplay = document.getElementById('essence');
+    const rebirthButton = document.getElementById('rebirth-button');
+    const rebirthUpgradesContainer = document.getElementById('rebirth-upgrades-container');
+
+    function updateDisplay() {
+        scoreDisplay.textContent = Math.floor(score).toLocaleString();
+        scorePerSecondDisplay.textContent = `${scorePerSecond.toLocaleString()}/s`;
+        essenceDisplay.textContent = essence.toLocaleString();
+        
+        upgrades.forEach(upgrade => {
+            const button = document.getElementById(`upgrade-${upgrade.name.replace(/\s/g, '')}`);
+            if (button) {
+                button.querySelector('.upgrade-cost').textContent = `Cost: ${Math.ceil(upgrade.cost).toLocaleString()}`;
+                button.querySelector('.upgrade-info').innerHTML = `${upgrade.name} <small>(Level: ${upgrade.level})</small>`;
+                button.disabled = score < upgrade.cost;
+            }
+        });
+
+        rebirthUpgrades.forEach(upgrade => {
+            const button = document.getElementById(`rebirth-upgrade-${upgrade.name.replace(/\s/g, '')}`);
+            if (button) {
+                button.disabled = essence < upgrade.cost || upgrade.purchased;
+                if(upgrade.purchased) {
+                   button.style.backgroundColor = '#555';
+                   button.querySelector('.upgrade-info').innerHTML = `${upgrade.name} <small>(Purchased)</small>`;
+                }
+            }
+        });
+
+        rebirthButton.disabled = score < rebirthRequirement;
+    }
+    
+    function calculateScorePerSecond() {
+        scorePerSecond = upgrades.filter(u => u.type === 'auto')
+                                .reduce((total, u) => total + (u.level * u.power), 0);
+    }
+
+    function createUpgradeButtons() {
+        upgradesContainer.innerHTML = '';
+        upgrades.forEach(upgrade => {
+            const button = document.createElement('button');
+            button.id = `upgrade-${upgrade.name.replace(/\s/g, '')}`;
+            button.className = 'upgrade-button';
+            button.innerHTML = `
+                <div class="upgrade-info">${upgrade.name} <small>(Level: ${upgrade.level})</small></div>
+                <div class="upgrade-cost">Cost: ${Math.ceil(upgrade.cost).toLocaleString()}</div>
+            `;
+            button.onclick = () => buyUpgrade(upgrade);
+            upgradesContainer.appendChild(button);
+        });
+    }
+    
+    function createRebirthUpgradeButtons() {
+        rebirthUpgradesContainer.innerHTML = '';
+        rebirthUpgrades.forEach(upgrade => {
+            const button = document.createElement('button');
+            button.id = `rebirth-upgrade-${upgrade.name.replace(/\s/g, '')}`;
+            button.className = 'upgrade-button';
+            button.innerHTML = `
+                <div class="upgrade-info">${upgrade.name} <small>(${upgrade.description})</small></div>
+                <div class="upgrade-cost">Cost: ${upgrade.cost} Essence</div>
+            `;
+            button.onclick = () => buyRebirthUpgrade(upgrade);
+            rebirthUpgradesContainer.appendChild(button);
+        });
+    }
+
+    function buyUpgrade(upgrade) {
+        if (score >= upgrade.cost) {
+            score -= upgrade.cost;
+            upgrade.level++;
+            if (upgrade.type === 'click') {
+                clickPower = upgrade.level * upgrade.power;
+            }
+            upgrade.cost *= 1.15;
+            calculateScorePerSecond();
+            updateDisplay();
+        }
+    }
+    
+    function buyRebirthUpgrade(upgrade) {
+        if (essence >= upgrade.cost && !upgrade.purchased) {
+            essence -= upgrade.cost;
+            upgrade.purchased = true;
+            upgrade.apply();
+            updateDisplay();
+        }
+    }
+
+    clickButton.addEventListener('click', () => {
+        score += clickPower;
+        updateDisplay();
+    });
+
+    rebirthButton.addEventListener('click', () => {
+        if (score >= rebirthRequirement) {
+            essence += Math.floor(score / rebirthRequirement);
+            score = 0;
+            clickPower = 1;
+            upgrades.forEach(u => {
+                u.level = u.type === 'click' ? 1 : 0;
+                u.cost = u.name === 'Click Power' ? 10 :
+                         u.name === 'Grandma' ? 50 :
+                         u.name === 'Factory' ? 500 :
+                         u.name === 'Mine' ? 5000 : 50000;
+            });
+            
+            rebirthUpgrades.forEach(u => {
+                if (u.purchased) u.apply();
+            });
+
+            calculateScorePerSecond();
+            updateDisplay();
+        }
+    });
+
+    function gameLoop() {
+        score += scorePerSecond / 10; // Update score 10 times per second for smoother animation
+        updateDisplay();
+    }
+
+    // Initial setup
+    createUpgradeButtons();
+    createRebirthUpgradeButtons();
+    calculateScorePerSecond();
+    setInterval(gameLoop, 100);
+</script>
+
+</body>
+</html>
